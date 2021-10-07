@@ -28,7 +28,7 @@ class Tile
         when "1" then return val.colorize(:light_blue)
         when "2" then return val.colorize(:green)
         when "3" then return val.colorize(:red)
-        when "4" then return puts val.colorize(:magenta)
+        when "4" then return val.colorize(:magenta)
         when "5" then return val.colorize(:cyan)   
         end
         # val
