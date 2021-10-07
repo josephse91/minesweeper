@@ -7,7 +7,7 @@ class Tile
     def initialize
         @show = false
         @bomb = false
-        @value = 4
+        @value = ""
     end
 
     def reveal
@@ -22,7 +22,7 @@ class Tile
         "*"
     end
     
-    def value_color
+    def value_print_with_color
         val = @value.to_s
         case val
         when "1" then return val.colorize(:light_blue)
