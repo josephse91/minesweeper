@@ -4,6 +4,7 @@ require 'byebug'
 class Tile
 
     attr_accessor :bomb
+    attr_accessor :value
     def initialize
         @show = false
         @bomb = false
