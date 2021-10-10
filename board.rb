@@ -59,7 +59,7 @@ class Board
 
     def valid_pos(pos)
         x,y = pos
-        (x > 0 && x < @grid.length) && (y > 0 && y < @grid.length)
+        (x >= 0 && x < @grid.length) && (y >= 0 && y < @grid.length)
     end
     
     def place_first_blank
@@ -78,9 +78,16 @@ class Board
         [[x + path_x],[y +path_y]]
     end
 
-    def blank_tile_path(tile_1)
-        tile = tile_1
-        blank_collection = [tile]
+    def valid_adj_tiles(tile_pos)
+        x,y = tile_pos
+        adj_directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[1,-1],[1,0],[1,1],[0,1]]
+        valid_directions = adj_directions.select { |pos_x,pos_y| valid_pos([x + pos_x, y + pos_y])}
+        valid_adj_pos = valid_directions.map { |pos_x,pos_y| [x + pos_x, y + pos_y] }
+    end
+    
+    def blank_tile_path(tile_pos)
+        tile_pos = tile_pos
+        blank_collection = [tile_pos]
         blank_count_options = {
             "one area" => blank_count_generator("one area"),
             "two areas" => blank_count_generator("two areas") 
@@ -94,22 +101,20 @@ class Board
      
         while self.placed_blank_count < blank_area_count
             spaces = rand(1..3)
+            if spaces > (blank_area_count - self.placed_blank_count)
+                spaces = (blank_area_count - self.placed_blank_count)
+            end
             # debugger
             spaces.times do 
-                if self.placed_blank_count == blank_area_count.sum
-                    break
-                end
                 next_blank = self.place_adj_blank(tile,move)
                 tile = [x + x_move ,y + y_move]
+                blank_collection << tile 
             end
         end
     end
 
-    def moving_blank_tiles(blank_count)
-        x,y = pos
-        path_x,path_y = @@Direction.sample
-        next_blank = @grid[x + path_x][y +[path_y]]
-        next_blank.set_value(0)
+    def blank_tile_select(blank_tile_array)
+        blank_tile_array.sample
     end
 
     def round_to_even(num)
