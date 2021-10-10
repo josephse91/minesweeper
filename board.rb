@@ -45,16 +45,21 @@ class Board
         end
     end
 
-    def placed_blank_count
-        count = 0
+    
+    def placed_blanks
+        blank_locations = []
         @grid.each do |row| 
             row.each do |tile|
                 if tile.value == 0
-                    count += 1
+                    blank_locations << tile
                 end
             end
         end
-        count         
+        blank_locations
+    end
+    
+    def placed_blank_count
+        self.placed_blanks.count        
     end
 
     def valid_pos(pos)
@@ -62,7 +67,14 @@ class Board
         (x >= 0 && x < @grid.length) && (y >= 0 && y < @grid.length)
     end
     
-    def place_first_blank
+    def valid_adj_tiles(tile_pos)
+        x,y = tile_pos
+        adj_directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[1,-1],[1,0],[1,1],[0,1]]
+        valid_directions = adj_directions.select { |pos_x,pos_y| valid_pos([x + pos_x, y + pos_y])}
+        valid_adj_pos = valid_directions.map { |pos_x,pos_y| [x + pos_x, y + pos_y] }
+    end
+    
+    def place_random_blank
         x,y = rand(@grid.length), rand(@grid.length)
         first_blank = @grid[x][y]
         first_blank.set_value(0)
@@ -70,19 +82,61 @@ class Board
         pos = [x,y]     
     end
 
-    def place_adj_blank(pos,direction)
+    def place_next_blank(pos,direction)
         x,y = pos
         path_x,path_y = direction
-        next_blank = @grid[x + path_x][y + path_y]
-        next_blank.set_value(0)
-        [[x + path_x],[y +path_y]]
+        if self.valid_pos(pos)
+            next_blank = @grid[x + path_x][y + path_y]
+            next_blank.set_value(0)
+            [x + path_x,y +path_y]
+        end
     end
 
-    def valid_adj_tiles(tile_pos)
+    def place_blanks(tile_pos,direction,occurances)
         x,y = tile_pos
-        adj_directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[1,-1],[1,0],[1,1],[0,1]]
-        valid_directions = adj_directions.select { |pos_x,pos_y| valid_pos([x + pos_x, y + pos_y])}
-        valid_adj_pos = valid_directions.map { |pos_x,pos_y| [x + pos_x, y + pos_y] }
+        path_x, path_y = direction
+
+        occurances.times do 
+            next_blank = @grid[x + path_x][y + path_y]
+            next_blank.set_value(0)
+            x += path_x
+            y += path_y
+        end
+    end
+
+    def big_blank_square_shape(tile_pos)
+        tiles = valid_adj_tiles(tile_pos)
+
+        tiles.each do |x,y| 
+            @grid[x][y].set_value(0)
+        end
+    end
+    
+    def blank_square_shape(tile_pos)
+        source = tile_pos
+        path = @@Direction.clone.shuffle
+        points = path.take(3)
+
+        until points.length < 1
+            point = points.shift
+            if valid_pos(source)
+                source = place_next_blank(source,point)
+            else
+                next
+            end
+        end        
+    end
+
+    def straight_line_shape(tile_pos)
+        source = tile_pos
+        path = @@Direction.shuffle[0]
+
+        2.times do
+            if valid_pos(source)
+                source = place_next_blank(source,path)
+            end
+        end
+        source        
     end
     
     def blank_tile_path(tile_pos)
@@ -106,7 +160,7 @@ class Board
             end
             # debugger
             spaces.times do 
-                next_blank = self.place_adj_blank(tile,move)
+                next_blank = self.place_next_blank(tile,move)
                 tile = [x + x_move ,y + y_move]
                 blank_collection << tile 
             end
