@@ -48,10 +48,10 @@ class Board
     
     def placed_blanks
         blank_locations = []
-        @grid.each do |row| 
-            row.each do |tile|
+        @grid.each_with_index do |row,row_idx| 
+            row.each_with_index do |tile,tile_idx|
                 if tile.value == 0
-                    blank_locations << tile
+                    blank_locations << [row_idx,tile_idx]
                 end
             end
         end
@@ -85,11 +85,11 @@ class Board
     def place_next_blank(pos,direction)
         x,y = pos
         path_x,path_y = direction
-        if self.valid_pos(pos)
-            next_blank = @grid[x + path_x][y + path_y]
+        next_blank = @grid[x + path_x][y + path_y]
+        if self.valid_pos([x + path_x,y +path_y])
             next_blank.set_value(0)
-            [x + path_x,y +path_y]
         end
+        [x + path_x,y +path_y]
     end
 
     def place_blanks(tile_pos,direction,occurances)
@@ -119,11 +119,7 @@ class Board
 
         until points.length < 1
             point = points.shift
-            if valid_pos(source)
-                source = place_next_blank(source,point)
-            else
-                next
-            end
+            source = place_next_blank(source,point)
         end        
     end
 
@@ -132,43 +128,46 @@ class Board
         path = @@Direction.shuffle[0]
 
         2.times do
-            if valid_pos(source)
-                source = place_next_blank(source,path)
-            end
+            source = place_next_blank(source,path)
         end
         source        
     end
+
+    def blank_shape_select(blanks_remaining,tile_pos)
+        tie_break = (0..7).to_a.sample
+        case 
+        when blanks_remaining >= 0 && blanks_remaining < 3
+            direction = @@Direction.shuffle[0]
+            self.place_next_blank(tile_pos,direction)
+        when blanks_remaining >= 3 && tie_break[1..7].even?
+            self.blank_square_shape(tile_pos)
+        when blanks_remaining >= 3 && tie_break[1..7].odd?
+            self.straight_line_shape(tile_pos)
+        when blanks_remaining >=8 && tie_break == 0 
+            self.blank_square_shape(tile_pos)
+        end
+    end
     
-    def blank_tile_path(tile_pos)
-        tile_pos = tile_pos
-        blank_collection = [tile_pos]
+    def blank_tile_path
         blank_count_options = {
             "one area" => blank_count_generator("one area"),
             "two areas" => blank_count_generator("two areas") 
         }
 
-        blank_area_count = blank_count_options.values.sample
-        
-        move = @@Direction.sample
-        x,y = tile
-        x_move,y_move = move
+        blank_areas = blank_count_options.values.sample
      
-        while self.placed_blank_count < blank_area_count
-            spaces = rand(1..3)
-            if spaces > (blank_area_count - self.placed_blank_count)
-                spaces = (blank_area_count - self.placed_blank_count)
-            end
+        blank_areas.each do |area|
+            source = self.place_random_blank
+
             # debugger
-            spaces.times do 
-                next_blank = self.place_next_blank(tile,move)
-                tile = [x + x_move ,y + y_move]
-                blank_collection << tile 
+            while self.placed_blank_count < blank_areas.sum
+                blanks_remaining = blank_areas.sum - self.placed_blank_count
+                self.blank_shape_select(blanks_remaining,source)
+
+                source = self.placed_blanks.sample
             end
         end
-    end
-
-    def blank_tile_select(blank_tile_array)
-        blank_tile_array.sample
+        self.placed_blank_count
     end
 
     def round_to_even(num)
