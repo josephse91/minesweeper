@@ -5,8 +5,8 @@ class Board
 
     attr_accessor :grid
     @@Level = {
-        "easy" => 8,
-        "hard" => 16,
+        "small" => 8,
+        "large" => 16,
     }
 
     @@Direction = [[0,1],[0,-1],[1,0],[-1,0]]
@@ -25,32 +25,32 @@ class Board
     end
 
     
-    def initialize  #(grid = Board.grid_layout("easy"))
-        @grid = Board.grid_layout("easy")
+    def initialize  #(grid = Board.grid_layout("small"))
+        @grid = Board.grid_layout("small")
     end
 
     def blank_count_generator(blank_area_count)
-        median_blank_count = round_to_even(@grid.flatten.count / 4)
-        delta = round_to_even(@grid.flatten.count / 16)
-        low_end_count = round_to_even(median_blank_count - delta)
-        high_end_count = round_to_even(median_blank_count + delta)
+        median_blank_count = @grid.flatten.count / 4
+        delta = @grid.flatten.count / 16
+        low_end_count = median_blank_count - delta
+        high_end_count = median_blank_count + delta
         
         case blank_area_count
         when "one area"
-            blanks = [(low_end_count..high_end_count).select(&:even?).sample]
+            blanks = [(low_end_count..high_end_count).to_a.sample]
         when "two areas"
-            first_block = (low_end_count..median_blank_count).select(&:even?).sample
+            first_block = (low_end_count..median_blank_count).to_a.sample
             second_block = delta
             blanks = [first_block,second_block]
         end
     end
 
     
-    def placed_blanks
+    def placed_items(item)
         blank_locations = []
         @grid.each_with_index do |row,row_idx| 
             row.each_with_index do |tile,tile_idx|
-                if tile.value == 0
+                if tile.value == item
                     blank_locations << [row_idx,tile_idx]
                 end
             end
@@ -59,12 +59,17 @@ class Board
     end
     
     def placed_blank_count
-        self.placed_blanks.count        
+        self.placed_items(0).count        
     end
 
     def valid_pos(pos)
         x,y = pos
         (x >= 0 && x < @grid.length) && (y >= 0 && y < @grid.length)
+    end
+
+    def undesignated_tile?(pos)
+        x,y = pos
+        valid_pos(pos) && self[x][y].value == ""
     end
     
     def valid_adj_tiles(tile_pos)
@@ -72,6 +77,60 @@ class Board
         adj_directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[1,-1],[1,0],[1,1],[0,1]]
         valid_directions = adj_directions.select { |pos_x,pos_y| valid_pos([x + pos_x, y + pos_y])}
         valid_adj_pos = valid_directions.map { |pos_x,pos_y| [x + pos_x, y + pos_y] }
+    end
+    
+    def bomb_count(board_size)
+        bombs = {"small" => 10, "large" => 40 }
+        bombs[board_size]
+    end
+
+    def placed_bombs
+        self.placed_items("*").count
+    end
+
+    def place_bomb
+        bomb = "*" 
+        pos = [-1,-1]
+
+        until valid_pos(pos) && undesignated_tile?(pos)
+            pos = [rand(@grid.length), rand(@grid.length)]
+        end
+        x,y = pos
+        first_bomb = self[x][y]
+        first_bomb.set_value(bomb)
+        pos   
+    end
+
+    def place_bombs(board_size)
+        bomb_amount = bomb_count(board_size)
+        until self.placed_bombs == bomb_amount
+            self.place_bomb
+        end
+        self.placed_items("*")
+    end
+
+    def place_indicator(tile_pos)
+        adj_tiles = valid_adj_tiles(tile_pos)
+        count = 0
+        adj_tiles.each do |x,y|
+            if self[x][y].value == "*"
+                count += 1
+            end
+        end
+        x,y = tile_pos
+        @grid[x][y].set_value(count) if count != 0 
+    end
+    
+    
+    def place_all_indicators
+        @grid.each_with_index do |row,row_idx| 
+            row.each_with_index do |tile,tile_idx|
+                if valid_pos([row_idx,tile_idx]) && undesignated_tile?([row_idx,tile_idx])
+                    tile_pos = [row_idx,tile_idx]
+                    self.place_indicator(tile_pos)
+                end
+            end
+        end 
     end
     
     def place_random_blank
@@ -90,18 +149,6 @@ class Board
             next_blank.set_value(0)
         end
         [x + path_x,y +path_y]
-    end
-
-    def place_blanks(tile_pos,direction,occurances)
-        x,y = tile_pos
-        path_x, path_y = direction
-
-        occurances.times do 
-            next_blank = @grid[x + path_x][y + path_y]
-            next_blank.set_value(0)
-            x += path_x
-            y += path_y
-        end
     end
 
     def big_blank_square_shape(tile_pos)
@@ -159,19 +206,33 @@ class Board
         blank_areas.each do |area|
             source = self.place_random_blank
 
-            # debugger
             while self.placed_blank_count < blank_areas.sum
                 blanks_remaining = blank_areas.sum - self.placed_blank_count
                 self.blank_shape_select(blanks_remaining,source)
 
-                source = self.placed_blanks.sample
+                source = self.placed_items(0).sample
             end
         end
         self.placed_blank_count
     end
 
-    def round_to_even(num)
-        return (num + 1) if num.odd?
-        num
+    def blank_reveal(pos)
+        x,y = pos
+        if @grid[x][y].value == 0
+            adj_tiles = valid_adj_tiles(pos)
+            adj_tiles.each {|tile| tile.show = true}
+            adj_tiles
+        end
     end
+
+    def group_blank_reveal(pos)
+        adj_to_blank = valid_adj_tiles(pos)
+        showing_adj_tiles = adj_to_blank.count {|x,y| @grid[x][y].show == true}
+        # while acount == 
+        adj_to_blank.each do |tile| 
+            adj_to_blank += self.blank_reveal(tile) 
+        end
+    end
+
+
 end

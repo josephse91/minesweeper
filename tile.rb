@@ -3,8 +3,9 @@ require 'byebug'
 
 class Tile
 
-    attr_accessor :bomb
-    attr_accessor :value
+    
+    attr_reader :show
+    attr_accessor :value, :bomb
     def initialize
         @show = false
         @bomb = false
