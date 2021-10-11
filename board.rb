@@ -220,14 +220,14 @@ class Board
         x,y = pos
         if @grid[x][y].value == 0
             adj_tiles = valid_adj_tiles(pos)
-            adj_tiles.each {|tile| tile.show = true}
+            adj_tiles.each {|tile| tile.reveal}
             adj_tiles
         end
     end
 
     def group_blank_reveal(pos)
         adj_to_blank = valid_adj_tiles(pos)
-        showing_adj_tiles = adj_to_blank.count {|x,y| @grid[x][y].show == true}
+        shown_adj_tiles = adj_to_blank.count {|x,y| @grid[x][y].show == true}
         # while acount == 
         adj_to_blank.each do |tile| 
             adj_to_blank += self.blank_reveal(tile) 
